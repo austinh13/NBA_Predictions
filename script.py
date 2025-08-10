@@ -46,8 +46,39 @@ merged_df["type"] = merged_df["type"].fillna(0).astype(int)
 merged_df = merged_df.fillna(0)  # replace NaN with 0
 
 
+
+'''
+#Displays data of All-NBA comapred to PPG,APG,RPG
+# Removes players with no age data, and remove players with less than 5 ppg
+mask = (merged_df["age"] != 0) & (merged_df["pts_per_game"] > 5)
+non_zero = merged_df.loc[mask].copy()
+
+# Color and size mapping
+colors = ['red' if t == 1 else 'blue' for t in non_zero['type']]
+sizes = [80 if t == 1 else 20 for t in non_zero['type']]  # Bigger for All-NBA
+
+fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+
+axs[0].scatter(non_zero['age'], non_zero['pts_per_game'], c=colors, s=sizes)
+axs[0].set_title('Points per Game')
+axs[0].set_xlabel('Age')
+axs[0].set_ylabel('PPG')
+
+axs[1].scatter(non_zero['age'], non_zero['ast_per_game'],  c=colors, s=sizes)
+axs[1].set_title('Assist per Game')
+axs[1].set_xlabel('Age')
+axs[1].set_ylabel('APG')
+
+axs[2].scatter(non_zero['age'], non_zero['trb_per_game'],  c=colors, s=sizes)
+axs[2].set_title('Total Rebounds per Game')
+axs[2].set_xlabel('Age')
+axs[2].set_ylabel('RPG')
+
+plt.tight_layout()
+plt.show()
+'''
 # Now split features and labels again, these are features being trained on
-x = merged_df[['pts_per_game','trb_per_game','ast_per_game']].values
+x = merged_df[['pts_per_game','trb_per_game','ast_per_game','fg_percent']].values
 
 y = merged_df['type'].values
 #print(merged_df.columns.tolist())
@@ -158,7 +189,7 @@ total_loss_train_plot = []
 total_loss_validation_plot = []
 total_acc_train_plot = []
 total_acc_validation_plot = []
-EPOCHS = 30
+EPOCHS = 14
 for epoch in range(EPOCHS):
     total_acc_train = 0
     total_loss_train = 0
@@ -217,7 +248,7 @@ with torch.no_grad():
     total_acc_test += acc
 
 
-#print(f"Accuracy Score is: {round((total_acc_test/x_test.shape[0])*100, 2)}%")
+print(f"Accuracy Score is: {round((total_acc_test/x_test.shape[0])*100, 2)}%")
 
 fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
 
@@ -236,9 +267,10 @@ axs[1].set_title('Training and Validation Accuracy over Epochs')
 axs[1].set_xlabel('Epochs')
 axs[1].set_ylabel('Accuracy')
 axs[1].set_ylim([0, 100])
-axs[1].set_xlim([2,30])
+axs[1].set_xlim([2,EPOCHS])
 axs[1].legend()
 
 plt.tight_layout()
 
 plt.show()
+
