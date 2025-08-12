@@ -270,7 +270,7 @@ while True:
             prediction = model(model_inputs)
 
         #print(prediction)
-        if(prediction.item() >= 0.995):
+        if(prediction.item() >= 0.996):
             print("All NBA")
         else:
             print("Not All NBA")
