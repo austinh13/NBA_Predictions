@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
+import shap
+
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
@@ -77,8 +79,10 @@ axs[2].set_ylabel('RPG')
 plt.tight_layout()
 plt.show()
 '''
+#g,gs,mp_per_game,fg_per_game,fga_per_game,fg_percent,x3p_per_game,x3pa_per_game,x3p_percent,x2p_per_game,x2pa_per_game,x2p_percent,e_fg_percent,ft_per_game,fta_per_game,ft_percent,orb_per_game,drb_per_game,trb_per_game,ast_per_game,stl_per_game,blk_per_game,tov_per_game,pf_per_game,pts_per_game
+
 # Now split features and labels again, these are features being trained on
-x = merged_df[['pts_per_game','trb_per_game','ast_per_game','fg_percent']].values
+x = merged_df[['pts_per_game','trb_per_game','ast_per_game','g','gs','mp_per_game','fg_per_game','fg_percent']].values
 
 y = merged_df['type'].values
 #print(merged_df.columns.tolist())
@@ -189,7 +193,7 @@ total_loss_train_plot = []
 total_loss_validation_plot = []
 total_acc_train_plot = []
 total_acc_validation_plot = []
-EPOCHS = 14
+EPOCHS = 25
 for epoch in range(EPOCHS):
     total_acc_train = 0
     total_loss_train = 0
@@ -250,6 +254,7 @@ with torch.no_grad():
 
 print(f"Accuracy Score is: {round((total_acc_test/x_test.shape[0])*100, 2)}%")
 
+
 fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
 
 
@@ -274,3 +279,37 @@ plt.tight_layout()
 
 plt.show()
 
+
+
+while True:
+    user_input = input("Continue (yes or no)? :")
+    if(user_input.lower() == "no"):
+        print("Peace!")
+        break
+    elif(user_input.lower() == "yes"):
+        pts_per_game = float(input("ppg: "))
+        trb_per_game = float(input("rpg: "))
+        ast_per_game = float(input("apg: "))
+        g = float(input("games: "))
+        gs = float(input("games started: "))
+        mp_per_game = float(input("minute per game: "))
+        fg_per_game = float(input("fgm per game: "))
+        fg_percent = float(input("fg percent: "))
+
+        #'pts_per_game','trb_per_game','ast_per_game','g','gs','mp_per_game','fg_per_game', 'fg_percent
+        my_inputs = [pts_per_game, trb_per_game, ast_per_game,g,gs,mp_per_game,fg_per_game,fg_percent]
+
+        print("="*20)
+        model.eval()
+        model_inputs = torch.tensor(my_inputs, dtype=torch.float32).unsqueeze(0).to(device)
+        with torch.no_grad():
+            prediction = model(model_inputs)
+
+        #print(prediction)
+        if(prediction.item() > 0.94):
+            print("All NBA")
+        else:
+            print("Not All NBA")
+        print("Class is:", prediction.item())
+    else:
+        print("invalid guess")
