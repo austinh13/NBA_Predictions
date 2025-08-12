@@ -126,42 +126,6 @@ train_dataloader = DataLoader(training_data, batch_size=16, shuffle=True)
 validation_dataloader = DataLoader(validation_data, batch_size=16, shuffle=True)
 testing_dataloader = DataLoader(testing_data, batch_size=16, shuffle=True)
 
-'''     
-#3.19 % at 25 EPHOCS at pts,rbs,ast
-class MyModel(nn.Module):
-    def __init__(self, input_size):
-        super(MyModel, self).__init__()
-        self.input_layer = nn.Linear(input_size, 10)
-        self.relu = nn.ReLU()
-        self.output_layer = nn.Linear(10, 1)
-    def forward(self, x):
-        x = self.input_layer(x)
-        x = self.relu(x)
-        x = self.output_layer(x)
-        return x  # no sigmoid
-'''
-'''
-#47.53% at 25 EPHOCS at pts,rbs,ast
-class MyModel(nn.Module):
-    def __init__(self, input_size):
-        super(MyModel, self).__init__()
-        self.layer1 = nn.Linear(input_size, 64)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.dropout1 = nn.Dropout(0.3)
-
-        self.layer2 = nn.Linear(64, 32)
-        self.bn2 = nn.BatchNorm1d(32)
-        self.dropout2 = nn.Dropout(0.3)
-
-        self.output_layer = nn.Linear(32, 1)
-
-    def forward(self, x):
-        x = self.dropout1(torch.relu(self.bn1(self.layer1(x))))
-        x = self.dropout2(torch.relu(self.bn2(self.layer2(x))))
-        x = torch.sigmoid(self.output_layer(x))
-        return x
-'''
-
 #50.57% at 25 EPHOCS at pts,rbs,ast
 class MyModel(nn.Module): 
     def __init__(self, input_size):
@@ -306,7 +270,7 @@ while True:
             prediction = model(model_inputs)
 
         #print(prediction)
-        if(prediction.item() > 0.94):
+        if(prediction.item() >= 0.995):
             print("All NBA")
         else:
             print("Not All NBA")
