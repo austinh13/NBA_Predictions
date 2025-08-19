@@ -23,6 +23,8 @@ import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
 import shap
+from flask import Flask, jsonify
+from flask_cors import CORS
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -47,7 +49,22 @@ merged_df = stats_df.merge(
 merged_df["type"] = merged_df["type"].fillna(0).astype(int)
 merged_df = merged_df.fillna(0)  # replace NaN with 0
 
+app = Flask(__name__)
+CORS(app)
 
+@app.route("/nba_predictions")
+def get_nba_data():
+    mask = (merged_df["age"] != 0) & (merged_df["pts_per_game"] > 7)
+    non_zero = merged_df.loc[mask].copy()
+
+    sampled = non_zero.sample(frac =0.3, random_state=42)  # random_state for reproducibility
+
+    data = sampled[["age","pts_per_game","ast_per_game","trb_per_game","type"]].to_dict(orient="records")
+
+    return jsonify(data)
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 '''
 #Displays data of All-NBA comapred to PPG,APG,RPG
@@ -91,17 +108,20 @@ y = merged_df['type'].values
 print(np.bincount(y.astype(int)))
 
 # 1. Split dataset into train and test (80% train, 20% test)
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+#x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.7, random_state=42)
 
 # 2. Split training data further into train and validation (e.g., 85% train, 15% val)
-x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5)
+#x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=42)
+
+x_train, x_temp, y_train, y_temp = train_test_split(x, y, test_size=0.3, random_state=42)
+x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42)
 
 # 3. Apply SMOTE only on training data to oversample minority class
 smote = SMOTE(random_state=42)
-x_train_resampled, y_train_resampled = smote.fit_resample(x_train, y_train)
+#x_train_resampled, y_train_resampled = smote.fit_resample(x_train, y_train)
 
 print("Before SMOTE:", np.bincount(y_train))
-print("After SMOTE:", np.bincount(y_train_resampled))
+#print("After SMOTE:", np.bincount(y_train_resampled))
 
 #print("Training set is: ", x_train.shape[0], " rows which is ", round(x_train.shape[0]/merged_df.shape[0],4)*100, "%") # Print training shape
 #print("Validation set is: ",x_val.shape[0], " rows which is ", round(x_val.shape[0]/merged_df.shape[0],4)*100, "%") # Print validation shape
@@ -118,7 +138,7 @@ class dataSet(Dataset):
         return self.x[index], self.y[index]
 
 # 4. Create datasets — note you use the resampled training data here
-training_data = dataSet(x_train_resampled, y_train_resampled)
+training_data = dataSet(x_train, y_train)
 validation_data = dataSet(x_val, y_val)
 testing_data = dataSet(x_test, y_test)
 
@@ -149,59 +169,13 @@ class MyModel(nn.Module):
 model = MyModel(input_size=x.shape[1]).to(device)
 
 criterion = nn.BCELoss()
-#pos_weight = torch.tensor([31_642 / 964]).to(device)  # ratio of negative to positive
-#criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 optimizer = Adam(model.parameters(), lr = 1e-3)
 
 total_loss_train_plot = []
 total_loss_validation_plot = []
 total_acc_train_plot = []
 total_acc_validation_plot = []
-EPOCHS = 25
-for epoch in range(EPOCHS):
-    total_acc_train = 0
-    total_loss_train = 0
-    total_acc_val = 0
-    total_loss_val = 0
-    ## Training and Validation
-    for data in train_dataloader:
-
-        inputs, labels = data
-
-        prediction = model(inputs).squeeze(1)
-
-        batch_loss = criterion(prediction, labels)
-
-        total_loss_train += batch_loss.item()
-
-        acc = ((torch.sigmoid(prediction) > 0.5) == labels).sum().item()
-
-        total_acc_train += acc
-
-        batch_loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-    ## Validation
-    with torch.no_grad():
-        for data in validation_dataloader:
-            inputs, labels = data
-
-            prediction = model(inputs).squeeze(1)
-
-            batch_loss = criterion(prediction, labels)
-
-            total_loss_val += batch_loss.item()
-
-            acc = ((prediction).round() == labels).sum().item()
-
-            total_acc_val += acc
-
-    total_loss_train_plot.append(round(total_loss_train/1000, 4))
-    total_loss_validation_plot.append(round(total_loss_val/1000, 4))
-    total_acc_train_plot.append(round(total_acc_train/(training_data.__len__())*100, 4))
-    total_acc_validation_plot.append(round(total_acc_val/(validation_data.__len__())*100, 4))
-
+EPOCHS = 5
 with torch.no_grad():
   total_loss_test = 0
   total_acc_test = 0
@@ -270,7 +244,7 @@ while True:
             prediction = model(model_inputs)
 
         #print(prediction)
-        if(prediction.item() >= 0.996):
+        if(prediction.item() >= 0.5):
             print("All NBA")
         else:
             print("Not All NBA")
