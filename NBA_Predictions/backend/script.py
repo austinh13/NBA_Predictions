@@ -54,10 +54,10 @@ CORS(app)
 
 @app.route("/nba_predictions")
 def get_nba_data():
-    mask = (merged_df["age"] != 0) & (merged_df["pts_per_game"] > 7)
+    mask = (merged_df["age"] != 0) & (merged_df["pts_per_game"] > 7) & (merged_df["ast_per_game"] > 1) & (merged_df["trb_per_game"] > 2)
     non_zero = merged_df.loc[mask].copy()
 
-    sampled = non_zero.sample(frac =0.3, random_state=42)  # random_state for reproducibility
+    sampled = non_zero.sample(n=800, random_state=42)  # random_state for reproducibility
 
     data = sampled[["age","pts_per_game","ast_per_game","trb_per_game","type"]].to_dict(orient="records")
 
