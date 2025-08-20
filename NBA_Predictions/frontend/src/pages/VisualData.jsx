@@ -6,7 +6,7 @@ export default function VisualData(){
     const [data,setData] = useState([{}])
 
     useEffect(() => {
-        fetch("https://nba-predictions-uyk0.onrender.com").then(
+        fetch("https://nba-predictions-uyk0.onrender.com/nba_predictions").then(
             res => res.json()
         ).then(
             data => {
