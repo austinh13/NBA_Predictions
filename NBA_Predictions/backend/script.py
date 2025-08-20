@@ -21,9 +21,8 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from imblearn.over_sampling import SMOTE
 import shap
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 
@@ -69,36 +68,7 @@ def get_nba_data():
 if __name__ == "__main__":
     app.run(debug=True)
 
-'''
-#Displays data of All-NBA comapred to PPG,APG,RPG
-# Removes players with no age data, and remove players with less than 5 ppg
-mask = (merged_df["age"] != 0) & (merged_df["pts_per_game"] > 5)
-non_zero = merged_df.loc[mask].copy()
 
-# Color and size mapping
-colors = ['red' if t == 1 else 'blue' for t in non_zero['type']]
-sizes = [80 if t == 1 else 20 for t in non_zero['type']]  # Bigger for All-NBA
-
-fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-
-axs[0].scatter(non_zero['age'], non_zero['pts_per_game'], c=colors, s=sizes)
-axs[0].set_title('Points per Game')
-axs[0].set_xlabel('Age')
-axs[0].set_ylabel('PPG')
-
-axs[1].scatter(non_zero['age'], non_zero['ast_per_game'],  c=colors, s=sizes)
-axs[1].set_title('Assist per Game')
-axs[1].set_xlabel('Age')
-axs[1].set_ylabel('APG')
-
-axs[2].scatter(non_zero['age'], non_zero['trb_per_game'],  c=colors, s=sizes)
-axs[2].set_title('Total Rebounds per Game')
-axs[2].set_xlabel('Age')
-axs[2].set_ylabel('RPG')
-
-plt.tight_layout()
-plt.show()
-'''
 #g,gs,mp_per_game,fg_per_game,fga_per_game,fg_percent,x3p_per_game,x3pa_per_game,x3p_percent,x2p_per_game,x2pa_per_game,x2p_percent,e_fg_percent,ft_per_game,fta_per_game,ft_percent,orb_per_game,drb_per_game,trb_per_game,ast_per_game,stl_per_game,blk_per_game,tov_per_game,pf_per_game,pts_per_game
 
 # Now split features and labels again, these are features being trained on
@@ -110,25 +80,9 @@ y = merged_df['type'].values
 
 print(np.bincount(y.astype(int)))
 
-# 1. Split dataset into train and test (80% train, 20% test)
-#x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.7, random_state=42)
-
-# 2. Split training data further into train and validation (e.g., 85% train, 15% val)
-#x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=42)
 
 x_train, x_temp, y_train, y_temp = train_test_split(x, y, test_size=0.3, random_state=42)
 x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42)
-
-# 3. Apply SMOTE only on training data to oversample minority class
-smote = SMOTE(random_state=42)
-#x_train_resampled, y_train_resampled = smote.fit_resample(x_train, y_train)
-
-print("Before SMOTE:", np.bincount(y_train))
-#print("After SMOTE:", np.bincount(y_train_resampled))
-
-#print("Training set is: ", x_train.shape[0], " rows which is ", round(x_train.shape[0]/merged_df.shape[0],4)*100, "%") # Print training shape
-#print("Validation set is: ",x_val.shape[0], " rows which is ", round(x_val.shape[0]/merged_df.shape[0],4)*100, "%") # Print validation shape
-#print("Testing set is: ",x_test.shape[0], " rows which is ", round(x_test.shape[0]/merged_df.shape[0],4)*100, "%") # Print testing shape
 
 class dataSet(Dataset):
     def __init__(self,x,y):
@@ -195,7 +149,7 @@ with torch.no_grad():
 
 print(f"Accuracy Score is: {round((total_acc_test/x_test.shape[0])*100, 2)}%")
 
-
+'''
 fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
 
 
@@ -219,9 +173,20 @@ axs[1].legend()
 plt.tight_layout()
 
 plt.show()
+'''
+
+@app.route("/predict_user_input", methods=["POST"])
+def predict_input():
+    user_data = request.json
+    my_inputs = [user_data["features"]]
+    model_inputs = torch.tensor(my_inputs, dtype=torch.float32).unsqueeze(0).to(device)
+    with torch.no_grad():
+        prediction = model(model_inputs)
+    return jsonify({"prediction": prediction.item()})
 
 
 
+'''
 while True:
     user_input = input("Continue (yes or no)? :")
     if(user_input.lower() == "no"):
@@ -254,3 +219,4 @@ while True:
         print("Class is:", prediction.item())
     else:
         print("invalid guess")
+'''
