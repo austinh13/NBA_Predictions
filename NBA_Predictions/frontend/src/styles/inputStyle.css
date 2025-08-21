@@ -2,8 +2,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 98vw;
-    height: 40vh;
+    width: 88vw;
+    height: 25vh;
+    padding: 2vh 1vw 2vh 1vw;
+    background-color: #e8435e92;
+    border-radius: 2px;
+    
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* drop shadow */
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 .inputForm{
@@ -25,5 +31,29 @@
 }
 
 .inputStyling p{
+    font-size: 1vw;
+}
+
+.predictionResult{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2vw;
+}
+
+.predictionResult h2{
+    font-size: 2.5vw;
+}
+
+.predictionResult h3{
+    font-size: 2vw;
+}
+
+.predictionResult h4{
+    font-size: 1.4vw;
+}
+
+.predictionResult p{
+    width: 12vw;
     font-size: 1vw;
 }

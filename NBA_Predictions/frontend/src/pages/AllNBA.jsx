@@ -34,8 +34,10 @@ export default function AllNBA(){
         parseFloat(form.fg_percent)
     ];
 
+    //https://nba-predictions-uyk0.onrender.com/predict_user_input
+    //http://127.0.0.1:5000/predict_user_input
     try {
-        const response = await fetch("http://127.0.0.1:5000/predict_user_input", {
+        const response = await fetch("https://nba-predictions-uyk0.onrender.com/predict_user_input", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -51,10 +53,6 @@ export default function AllNBA(){
     }
     };
 
-
-    //https://nba-predictions-uyk0.onrender.com/predict_user_input
-    //http://127.0.0.1:5000/predict_user_input
-    
     return(
         <div className = "inputContent">
             <form className = "inputForm" onSubmit={handleSubmit}>
@@ -143,9 +141,15 @@ export default function AllNBA(){
             </form>
 
             {prediction !== null && (
-                <div>
+                <div className = "predictionResult">
                     <h2>Prediction Result:</h2>
-                    <p>{prediction}</p>
+                    {prediction > 0.5 ? (
+                    <h3>All-NBA</h3>
+                    ) : (
+                    <h3>Not All-NBA</h3>
+                    )}
+                    <h4>{Math.round(prediction * 100) + "% chance player is All-NBA"}</h4>
+                    <p>Disclaimer: Percentages are often lower than expected!!</p>
                 </div>
             )}
         </div>

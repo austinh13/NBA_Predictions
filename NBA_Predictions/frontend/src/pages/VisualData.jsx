@@ -15,7 +15,7 @@ export default function VisualData(){
     //https://nba-predictions-uyk0.onrender.com/nba_predictions
     //http://127.0.0.1:5000
     useEffect(() => {
-        fetch("http://127.0.0.1:5000/nba_predictions").then(
+        fetch("https://nba-predictions-uyk0.onrender.com/nba_predictions").then(
             res => res.json()
         ).then(
             data => {
