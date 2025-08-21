@@ -1,15 +1,6 @@
-
-#import os
-#import opendatasets as od
-
-# Get the directory where the current script is located
-#script_dir = os.path.dirname(os.path.abspath(__file__))
-
 # URL of the Kaggle dataset
 #dataset_url = "https://www.kaggle.com/datasets/sumitrodatta/nba-aba-baa-stats/"
 
-# Download the dataset into the same folder
-#od.download(dataset_url, data_dir=script_dir) 
 
 import torch
 import torch.nn as nn
@@ -19,7 +10,7 @@ from flask_cors import CORS
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-merged_df = pd.read_pickle("merged_df.pkl")
+filtered_pf = pd.read_pickle("filtered_df.pkl")
 
 class MyModel(nn.Module): 
     def __init__(self, input_size):
@@ -46,33 +37,59 @@ model.eval()
 app = Flask(__name__)
 CORS(app)
 
+
+#sampled = non_zero.sample(n=1000, random_state=42)  # random_state for reproducibility
+
 @app.route("/nba_predictions")
 def get_nba_data():
-    mask = ((merged_df["age"] != 0) & (merged_df["pts_per_game"] > 7) & (merged_df["ast_per_game"] > 1) 
-            & (merged_df["trb_per_game"] > 2) & (merged_df["mp_per_game"] > 25) 
-            & (merged_df["season"] >= 1976) & (merged_df["g"] >= 50))
-    non_zero = merged_df.loc[mask].copy()
     
-    sampled = non_zero.sample(n=1000, random_state=42)  # random_state for reproducibility
-
-
+    sampled = filtered_pf.sample(n=1000, random_state=42)  # random_state for reproducibility
     data = sampled[["mp_per_game","pts_per_game","ast_per_game","trb_per_game","type","fg_per_game"]].to_dict(orient="records")
 
     return jsonify(data)
 
-if __name__ == "__main__":
-    app.run(debug=True)
-
-@app.route("/predict_user_input", methods=["POST"])
+'''
+@app.route("/predict_user_input", methods=["POST", "OPTIONS"])
 def predict_input():
+    if request.method == "OPTIONS":
+        # Respond OK to preflight
+        return jsonify({}), 200
+
     user_data = request.json
     my_inputs = [user_data["features"]]
     model_inputs = torch.tensor(my_inputs, dtype=torch.float32).unsqueeze(0).to(device)
     with torch.no_grad():
         prediction = model(model_inputs)
     return jsonify({"prediction": prediction.item()})
+'''
 
+@app.route("/predict_user_input", methods=["POST"])
+def predict_input():
+    try:
+        user_data = request.json
+        print("🔹 Received data:", user_data)  # Debug log
 
+        # Extract features
+        my_inputs = [user_data["features"]]
+
+        # Convert to tensor
+        model_inputs = torch.tensor(my_inputs, dtype=torch.float32).to(device)
+
+        # Predict
+        with torch.no_grad():
+            prediction = model(model_inputs)
+
+        result = prediction.item()
+        print("✅ Prediction:", result)
+
+        return jsonify({"prediction": result}), 200
+    except Exception as e:
+        print("Error:", e)  # logs in Flask console
+        return jsonify({"error": str(e)}), 500
+    
+if __name__ == "__main__":
+    print("🚀 Starting Flask server...")
+    app.run(host="127.0.0.1", port=5000, debug=True)
 
 '''
 while True:

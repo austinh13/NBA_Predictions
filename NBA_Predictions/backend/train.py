@@ -24,11 +24,28 @@ merged_df = stats_df.merge(
 merged_df["type"] = merged_df["type"].fillna(0).astype(int)
 merged_df = merged_df.fillna(0)  # replace NaN with 0
 
-merged_df.to_pickle("merged_df.pkl")
+merged_df_corrected = merged_df[
+        (merged_df["g"] >= 5)
+    ]
+merged_df_corrected.to_pickle("merged_df_corrected.pkl")
+
+filtered_df = merged_df[
+    (merged_df["age"] != 0) &
+    (merged_df["mp_per_game"] > 28.5) &
+    (merged_df["ast_per_game"] > 1) &
+    (merged_df["g"] >= 50) & 
+    (merged_df["pts_per_game"] > 7) &
+    (merged_df["trb_per_game"] > 2) &
+    (merged_df["season"] >= 1976) 
+]
+
+filtered_df.to_pickle("filtered_df.pkl")
+
+
 
 # Now split features and labels again, these are features being trained on
-x = merged_df[['pts_per_game','trb_per_game','ast_per_game','g','gs','mp_per_game','fg_per_game','fg_percent']].values
-y = merged_df['type'].values
+x = merged_df_corrected[['pts_per_game','trb_per_game','ast_per_game','g','gs','mp_per_game','fg_per_game','fg_percent']].values
+y = merged_df_corrected['type'].values
 
 x_train, x_temp, y_train, y_temp = train_test_split(x, y, test_size=0.3, random_state=42)
 x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42)

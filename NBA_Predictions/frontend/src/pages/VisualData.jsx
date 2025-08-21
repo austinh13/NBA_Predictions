@@ -12,8 +12,10 @@ export default function VisualData(){
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    //https://nba-predictions-uyk0.onrender.com/nba_predictions
+    //http://127.0.0.1:5000
     useEffect(() => {
-        fetch("https://nba-predictions-uyk0.onrender.com/nba_predictions").then(
+        fetch("http://127.0.0.1:5000/nba_predictions").then(
             res => res.json()
         ).then(
             data => {
@@ -34,7 +36,7 @@ export default function VisualData(){
                 <ResponsiveContainer  className = "flexContainer" width={containerWidth} height={containerHeight}>
                     <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
                                 <CartesianGrid />
-                                <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[25,35]} 
+                                <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
                                 label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
                                 />
                                 <YAxis type="number" dataKey="pts_per_game" name="PPG" domain={[6.5,55]}
@@ -56,7 +58,7 @@ export default function VisualData(){
                 <ResponsiveContainer  className = "flexContainer"  width={containerWidth} height={containerHeight}>
                     <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
                         <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[25,35]} 
+                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
                         label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
                         />
                         <YAxis type="number" dataKey="ast_per_game" name="APG" domain={[1,15]}
@@ -78,7 +80,7 @@ export default function VisualData(){
                 <ResponsiveContainer className = "flexContainer" width={containerWidth} height={containerHeight}>
                     <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
                         <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[25,35]} 
+                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
                         label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
                         />
                         <YAxis type="number" dataKey="trb_per_game" name="RPG" domain={[2,15]}
@@ -100,7 +102,7 @@ export default function VisualData(){
                 <ResponsiveContainer  className = "flexContainer" width={containerWidth} height={containerHeight}>
                     <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
                         <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[25,35]} 
+                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
                         label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
                         />
                         <YAxis type="number" dataKey="fg_per_game" name="FGM Per Game" domain={[0,19]}

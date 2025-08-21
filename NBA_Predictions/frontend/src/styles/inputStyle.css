@@ -1,0 +1,29 @@
+.inputContent{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 98vw;
+    height: 40vh;
+}
+
+.inputForm{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap:3vw;
+}
+
+.inputStyling{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.inputStyling input{
+    width: 3vw;
+}
+
+.inputStyling p{
+    font-size: 1vw;
+}

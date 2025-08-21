@@ -2,10 +2,14 @@ body{
     margin: 0;
 }
 
+.content{
+    display: flex;
+    flex-direction: column;
+}
 .displays{
     display: flex;
     flex-direction: column;
-    width: 99vw;
+    width: 98.2vw;
     height: 60vh;
     font-family: Arial, Helvetica, sans-serif;
     align-items: center;
@@ -27,7 +31,7 @@ body{
 .charts{
     display: flex;
     flex-direction: row;
-    width: 98vw;
+    width: 97vw;
     height: 45vh;
 
     background-color: rgba(240, 248, 255, 0.292);
