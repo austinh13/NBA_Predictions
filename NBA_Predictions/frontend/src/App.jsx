@@ -7,8 +7,8 @@ function App() {
 
   return (
     <div className = "content">
-        <VisualData></VisualData>
         <AllNBA></AllNBA>
+        <VisualData></VisualData>
     </div>
     
   )

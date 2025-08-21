@@ -1,17 +1,40 @@
+.topContainer{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial, Helvetica, sans-serif;
+    padding-top:2vh;
+}
+
+.topContainer h1{
+    margin: 0;
+    font-size: 1.7vw;
+}
+
+.topContainer p{
+    text-align: center;
+    font-size: 1vw;
+}
+
 .inputContent{
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 88vw;
-    height: 25vh;
-    padding: 2vh 1vw 2vh 1vw;
-    background-color: #e8435e92;
-    border-radius: 2px;
+    width: 84vw;
+    height: 30vh;
+    padding: 1vh 1vw 2vh 1vw;
+    background-color: #C89F9C;
+    border-radius: 1vw;
     
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* drop shadow */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* drop shadow */
     font-family: Arial, Helvetica, sans-serif;
 }
 
+#inputInfo{
+    text-align: center;
+    width: 80vw;
+    font-size: 1vw;
+}
 .inputForm{
     display: flex;
     flex-direction: row;
@@ -24,14 +47,13 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    gap:3vh;
 }
 
-.inputStyling input{
-    width: 3vw;
-}
 
 .inputStyling p{
-    font-size: 1vw;
+    font-size: 1.2vw;
+    margin: 0;
 }
 
 .predictionResult{
@@ -42,18 +64,152 @@
 }
 
 .predictionResult h2{
-    font-size: 2.5vw;
+    font-size: 2.2vw;
 }
 
 .predictionResult h3{
-    font-size: 2vw;
+    font-size: 1.8vw;
 }
 
-.predictionResult h4{
-    font-size: 1.4vw;
-}
 
 .predictionResult p{
-    width: 12vw;
+    width: 14vw;
     font-size: 1vw;
+}
+
+#submitButton{
+    width: 8vw;
+    height: 6vh;
+    font-size: 1.4vw;
+    background-color: #c97c5d;
+    border-style: solid;
+    border-radius: 1vw;
+    margin-left: -1vw;
+}
+
+.inputForms{
+    
+    text-align: center;
+    width: 6vw;
+    height: 3vh;
+    font-size: 1vw;
+
+    border-style: solid;
+    border-color: grey;
+    border-radius: 0.3vw;
+    border-width: 0.15vw;
+}
+
+@media(max-width:600px){
+    body{
+        padding-bottom: 1vh;
+    }
+
+    .topContainer h1{
+        margin: 0;
+        font-size: 3.5vh;
+    }
+
+    .topContainer p{
+        text-align: center;
+        font-size: 2vh;
+    }
+    .inputContent{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 95vw;
+    height: 55vh;
+    padding: 1vh 1vw 2vh 1vw;
+    background-color: #C89F9C;
+    border-radius: 1vw;
+    
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* drop shadow */
+    font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #inputInfo{
+        text-align: center;
+        width: 90vw;
+        font-size: 1.6vh;
+    }
+
+    .inputForm{
+        display: grid;
+        grid-template-columns: repeat(4,23vw);
+        grid-template-rows: repeat(2,10vh);
+
+        gap:1vw;
+    }
+
+    .inputStyling{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap:1vh;
+    }
+
+
+    .inputStyling p{
+        font-size: 1.7vh;
+        width: 15vw;
+        margin: 0;
+    }
+
+    .predictionResult{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5vh;
+    }
+
+    .predictionResult h2{
+        font-size: 2.4vh;
+        margin-top: 2vh;
+    }
+
+    .predictionResult h3{
+        font-size: 2.2vh;
+        margin: 0;
+    }
+
+
+    .predictionResult p{
+        width: 70vw;
+        font-size: 1.5vh;
+        margin: 0;
+    }
+
+    #submitButton{
+        width: 25vw;
+        height: 7vh;
+        font-size: 2.5vh;
+        background-color: #c97c5d;
+        border-style: solid;
+        border-radius: 1vw;
+        margin-top: 1vh;
+        margin-left: 7vw;
+    }
+
+    .inputForms{
+        
+        text-align: center;
+        width: 14vw;
+        height: 3.5vh;
+        font-size: 1.3vh;
+
+        border-style: solid;
+        border-color: grey;
+        border-radius: 0.3vw;
+        border-width: 0.15vw;
+    }
+
+    #games{
+        margin-top: 1.5vh;
+    }
+
+    #basicDesc{
+
+    }
 }

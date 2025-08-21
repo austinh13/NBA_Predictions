@@ -13,7 +13,7 @@ export default function VisualData(){
     }, []);
 
     //https://nba-predictions-uyk0.onrender.com/nba_predictions
-    //http://127.0.0.1:5000
+    //http://127.0.0.1:5000/nba_predictions
     useEffect(() => {
         fetch("https://nba-predictions-uyk0.onrender.com/nba_predictions").then(
             res => res.json()
@@ -30,17 +30,16 @@ export default function VisualData(){
 
     return(
         <div className = "displays">
-            <h1>All-NBA Data</h1>
-            <p>Data is taken from 1000 random players in the modern NBA history. Blue dots are All-NBA players while red are not. Emmitted anaomly values</p>
+            
             <div className="charts">
                 <ResponsiveContainer  className = "flexContainer" width={containerWidth} height={containerHeight}>
-                    <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
+                    <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
                                 <CartesianGrid />
-                                <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
-                                label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
+                                <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2}
+                                label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
                                 />
-                                <YAxis type="number" dataKey="pts_per_game" name="PPG" domain={[6.5,55]}
-                                label={{ value: "PPG", position: "outsideLeft", offset: -5, angle: -90, dx: -20 }}
+                                <YAxis type="number" dataKey="pts_per_game" name="PPG" domain={[6.5,38]} stroke="#000000" strokeWidth={2}
+                                label={{ value: "PPG", position: "outsideLeft", offset: -5, angle: -90, dx: -20, fill: "#000000", }}
                                 />
                                 <Tooltip cursor={{ strokeDasharray: "3 3" }} />
                                 <Scatter
@@ -56,13 +55,13 @@ export default function VisualData(){
                 </ResponsiveContainer >
                 
                 <ResponsiveContainer  className = "flexContainer"  width={containerWidth} height={containerHeight}>
-                    <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
+                    <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
                         <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
-                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
+                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2} 
+                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
                         />
-                        <YAxis type="number" dataKey="ast_per_game" name="APG" domain={[1,15]}
-                        label={{ value: "APG", position: "outsideLeft", offset: -25, angle: -90, dx: -20 }}
+                        <YAxis type="number" dataKey="ast_per_game" name="APG" domain={[1,14]} stroke="#000000" strokeWidth={2}
+                        label={{ value: "APG", position: "outsideLeft", offset: -25, angle: -90, dx: -20, fill: "#000000", }}
                         />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
                         <Scatter
@@ -78,13 +77,13 @@ export default function VisualData(){
                 </ResponsiveContainer>
 
                 <ResponsiveContainer className = "flexContainer" width={containerWidth} height={containerHeight}>
-                    <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
+                    <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
                         <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
-                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
+                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2}
+                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
                         />
-                        <YAxis type="number" dataKey="trb_per_game" name="RPG" domain={[2,15]}
-                        label={{ value: "RPG", position: "outsideLeft", offset: -25, angle: -90, dx: -20 }}
+                        <YAxis type="number" dataKey="trb_per_game" name="RPG" domain={[2,15]} stroke="#000000" strokeWidth={2}
+                        label={{ value: "RPG", position: "outsideLeft", offset: -25, angle: -90, dx: -20, fill: "#000000", }}
                         />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
                         <Scatter
@@ -100,13 +99,13 @@ export default function VisualData(){
                 </ResponsiveContainer>
 
                 <ResponsiveContainer  className = "flexContainer" width={containerWidth} height={containerHeight}>
-                    <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 50 }}>
+                    <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
                         <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} 
-                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5 }}
+                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2}
+                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
                         />
-                        <YAxis type="number" dataKey="fg_per_game" name="FGM Per Game" domain={[0,19]}
-                        label={{ value: "FGM", position: "outsideLeft", offset: -25, angle: -90, dx: -20 }}
+                        <YAxis type="number" dataKey="fg_per_game" name="FGM Per Game" domain={[2,15]} stroke="#000000" strokeWidth={2}
+                        label={{ value: "FGM", position: "outsideLeft", offset: -25, angle: -90, dx: -20, fill: "#000000", }}
                         />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
                         <Scatter

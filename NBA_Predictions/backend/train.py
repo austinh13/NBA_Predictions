@@ -44,7 +44,7 @@ filtered_df.to_pickle("filtered_df.pkl")
 
 
 # Now split features and labels again, these are features being trained on
-x = merged_df_corrected[['pts_per_game','trb_per_game','ast_per_game','g','gs','mp_per_game','fg_per_game','fg_percent']].values
+x = merged_df_corrected[['pts_per_game','trb_per_game','ast_per_game','g','mp_per_game','fg_per_game']].values
 y = merged_df_corrected['type'].values
 
 x_train, x_temp, y_train, y_temp = train_test_split(x, y, test_size=0.3, random_state=42)

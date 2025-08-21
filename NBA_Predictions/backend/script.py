@@ -30,7 +30,7 @@ class MyModel(nn.Module):
         x = self.sigmoid(self.out(x))
         return x
 
-model = MyModel(input_size=8).to(device)
+model = MyModel(input_size=6).to(device)
 model.load_state_dict(torch.load("model.pth", map_location=device))
 model.eval()
 
@@ -48,20 +48,6 @@ def get_nba_data():
 
     return jsonify(data)
 
-'''
-@app.route("/predict_user_input", methods=["POST", "OPTIONS"])
-def predict_input():
-    if request.method == "OPTIONS":
-        # Respond OK to preflight
-        return jsonify({}), 200
-
-    user_data = request.json
-    my_inputs = [user_data["features"]]
-    model_inputs = torch.tensor(my_inputs, dtype=torch.float32).unsqueeze(0).to(device)
-    with torch.no_grad():
-        prediction = model(model_inputs)
-    return jsonify({"prediction": prediction.item()})
-'''
 
 @app.route("/predict_user_input", methods=["POST"])
 def predict_input():
