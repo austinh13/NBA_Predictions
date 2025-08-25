@@ -70,44 +70,10 @@ def predict_input():
 
         return jsonify({"prediction": result}), 200
     except Exception as e:
-        print("Error:", e)  # logs in Flask console
+        print("Error:", e) 
         return jsonify({"error": str(e)}), 500
     
 if __name__ == "__main__":
     print("🚀 Starting Flask server...")
     app.run(host="127.0.0.1", port=5000, debug=True)
 
-'''
-while True:
-    user_input = input("Continue (yes or no)? :")
-    if(user_input.lower() == "no"):
-        print("Peace!")
-        break
-    elif(user_input.lower() == "yes"):
-        pts_per_game = float(input("ppg: "))
-        trb_per_game = float(input("rpg: "))
-        ast_per_game = float(input("apg: "))
-        g = float(input("games: "))
-        gs = float(input("games started: "))
-        mp_per_game = float(input("minute per game: "))
-        fg_per_game = float(input("fgm per game: "))
-        fg_percent = float(input("fg percent: "))
-
-        #'pts_per_game','trb_per_game','ast_per_game','g','gs','mp_per_game','fg_per_game', 'fg_percent
-        my_inputs = [pts_per_game, trb_per_game, ast_per_game,g,gs,mp_per_game,fg_per_game,fg_percent]
-
-        print("="*20)
-        model.eval()
-        model_inputs = torch.tensor(my_inputs, dtype=torch.float32).unsqueeze(0).to(device)
-        with torch.no_grad():
-            prediction = model(model_inputs)
-
-        #print(prediction)
-        if(prediction.item() >= 0.5):
-            print("All NBA")
-        else:
-            print("Not All NBA")
-        print("Class is:", prediction.item())
-    else:
-        print("invalid guess")
-'''

@@ -57,6 +57,8 @@ export default function AllNBA(){
             <p id = "basicDesc"> Data is taken from 1000 random players in the modern NBA history. 
                 Blue dots are All-NBA players while red are not. 
                 <strong>!!! Cold Starts could take 1-2 minutes due to free API usage !!!</strong></p>
+                <a href = "https://austinh.vercel.app/" target= "_blank"><strong>Demo Video Under Projects</strong></a>
+
             <div className = "inputContent">
 <p id ="inputInfo"> <strong>How to use:</strong> Enter Per Game Average of each stats and press submit to see if a player with those stats would be considered All-NBA. 
                 Prediction model is based of all players in modern NBA (1976-Current) with atleast 5 games in a season. 
