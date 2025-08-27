@@ -3,6 +3,7 @@ import VisualData from './pages/VisualData'
 import AllNBA from './pages/AllNBA'
 import "./styles/chartStyle.css"
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/next"
 
 function App() {
 
@@ -11,6 +12,7 @@ function App() {
   <div className='content'>
     <AllNBA></AllNBA>
     <VisualData></VisualData>
+    <Analytics></Analytics>
   </div>
 
     
