@@ -4,9 +4,6 @@ import {
   Tooltip, ResponsiveContainer
 } from 'recharts'
 
-// const dataLink = 'http://127.0.0.1:5000/nba_predictions'
-const dataLink = 'https://nba-predictions-uyk0.onrender.com/nba_predictions'
-
 const CHART_CONFIGS = [
   {
     id: 'ppg',
@@ -208,10 +205,10 @@ export default function DataViz() {
   const avgPPG_standard = standard.length ? (standard.reduce((s, d) => s + (d.pts_per_game || 0), 0) / standard.length).toFixed(1) : '—'
 
   useEffect(() => {
-    fetch(dataLink)
+    fetch('/nba_data.json')
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
-      .catch(() => { setError('Failed to load data. API cold start may take 1–2 min.'); setLoading(false) })
+      .catch(() => { setError('Failed to load data.'); setLoading(false) })
   }, [])
 
   return (
@@ -256,10 +253,7 @@ export default function DataViz() {
                 animation: 'spin-slow 0.8s linear infinite',
               }} />
             </div>
-            <div className="loading-title">Fetching 1,000 records...</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.1em' }}>
-              COLD START MAY TAKE 1–2 MIN
-            </div>
+            <div className="loading-title">Loading player data...</div>
           </div>
           <LoadingSkeleton />
         </>
