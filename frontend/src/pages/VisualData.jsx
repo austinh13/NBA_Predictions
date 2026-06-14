@@ -1,132 +1,311 @@
-import { useState,useEffect } from "react";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import '../styles/chartStyle.css'
+import React, { useState, useEffect, useRef } from 'react'
+import {
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
+} from 'recharts'
 
-export default function VisualData(){
-    const [data,setData] = useState([{}])
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+// const dataLink = 'http://127.0.0.1:5000/nba_predictions'
+const dataLink = 'https://nba-predictions-uyk0.onrender.com/nba_predictions'
 
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 600);
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
+const CHART_CONFIGS = [
+  {
+    id: 'ppg',
+    title: 'Points vs Minutes',
+    subtitle: 'PPG / MPG Correlation',
+    xKey: 'mp_per_game',
+    yKey: 'pts_per_game',
+    xLabel: 'MPG',
+    yLabel: 'PPG',
+    xDomain: [28.5, 35],
+    yDomain: [6.5, 38],
+    delay: 0,
+  },
+  {
+    id: 'apg',
+    title: 'Assists vs Minutes',
+    subtitle: 'APG / MPG Correlation',
+    xKey: 'mp_per_game',
+    yKey: 'ast_per_game',
+    xLabel: 'MPG',
+    yLabel: 'APG',
+    xDomain: [28.5, 35],
+    yDomain: [1, 14],
+    delay: 0.1,
+  },
+  {
+    id: 'rpg',
+    title: 'Rebounds vs Minutes',
+    subtitle: 'RPG / MPG Correlation',
+    xKey: 'mp_per_game',
+    yKey: 'trb_per_game',
+    xLabel: 'MPG',
+    yLabel: 'RPG',
+    xDomain: [28.5, 35],
+    yDomain: [2, 15],
+    delay: 0.2,
+  },
+  {
+    id: 'fgm',
+    title: 'FG Made vs Minutes',
+    subtitle: 'FGM / MPG Correlation',
+    xKey: 'mp_per_game',
+    yKey: 'fg_per_game',
+    xLabel: 'MPG',
+    yLabel: 'FGM',
+    xDomain: [28.5, 35],
+    yDomain: [2, 15],
+    delay: 0.3,
+  },
+]
 
-    //https://nba-predictions-uyk0.onrender.com/nba_predictions
-    //http://127.0.0.1:5000/nba_predictions
-    useEffect(() => {
-        fetch("https://nba-predictions-uyk0.onrender.com/nba_predictions").then(
-            res => res.json()
-        ).then(
-            data => {
-                setData(data)
-                console.log(data)
-            }
-        )
-    },[])
+const ALL_NBA_COLOR  = '#F4813F'
+const REGULAR_COLOR  = '#3B82F6'
+const GRID_COLOR     = 'rgba(255,255,255,0.04)'
+const AXIS_COLOR     = 'rgba(255,255,255,0.25)'
 
-    const containerWidth = isMobile ? "100%" : "25%";
-    const containerHeight = isMobile ? "25%" : "100%"; // 150px for mobile, 100% for desktop
+// Custom dot renderer
+function CustomDot(props) {
+  const { cx, cy, payload } = props
+  const isAllNBA = payload.type === 1
+  const color = isAllNBA ? ALL_NBA_COLOR : REGULAR_COLOR
+  const r = isAllNBA ? 4 : 2.5
 
-    return(
-        <div className = "displays">
-            
-            <div className="charts">
-                <ResponsiveContainer  className = "flexContainer" width={containerWidth} height={containerHeight}>
-                    <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
-                                <CartesianGrid />
-                                <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2}
-                                label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
-                                />
-                                <YAxis type="number" dataKey="pts_per_game" name="PPG" domain={[6.5,38]} stroke="#000000" strokeWidth={2}
-                                label={{ value: "PPG", position: "outsideLeft", offset: -5, angle: -90, dx: -20, fill: "#000000", }}
-                                />
-                                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                                <Scatter
-                                    data={data}
-                                    shape={(props) => {
-                                    const { cx, cy, payload } = props;
-                                    const color = payload.type === 1 ? "blue" : "red";
-                                    const size = payload.type === 1 ? 4 : 2;
-                                    return <circle cx={cx} cy={cy} r={size} fill={color} />;
-                                    }}
-                                />
-                    </ScatterChart>
-                </ResponsiveContainer >
-                
-                <ResponsiveContainer  className = "flexContainer"  width={containerWidth} height={containerHeight}>
-                    <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
-                        <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2} 
-                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
-                        />
-                        <YAxis type="number" dataKey="ast_per_game" name="APG" domain={[1,14]} stroke="#000000" strokeWidth={2}
-                        label={{ value: "APG", position: "outsideLeft", offset: -25, angle: -90, dx: -20, fill: "#000000", }}
-                        />
-                        <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter
-                            data={data}
-                            shape={(props) => {
-                            const { cx, cy, payload } = props;
-                            const color = payload.type === 1 ? "blue" : "red";
-                            const size = payload.type === 1 ? 4 : 2;
-                            return <circle cx={cx} cy={cy} r={size} fill={color} />;
-                            }}
-                        />
-                    </ScatterChart>
-                </ResponsiveContainer>
+  return (
+    <circle
+      cx={cx} cy={cy} r={r}
+      fill={color}
+      fillOpacity={isAllNBA ? 0.9 : 0.45}
+      stroke={isAllNBA ? color : 'none'}
+      strokeWidth={isAllNBA ? 1 : 0}
+      strokeOpacity={0.3}
+    />
+  )
+}
 
-                <ResponsiveContainer className = "flexContainer" width={containerWidth} height={containerHeight}>
-                    <ScatterChart   margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
-                        <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2}
-                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
-                        />
-                        <YAxis type="number" dataKey="trb_per_game" name="RPG" domain={[2,15]} stroke="#000000" strokeWidth={2}
-                        label={{ value: "RPG", position: "outsideLeft", offset: -25, angle: -90, dx: -20, fill: "#000000", }}
-                        />
-                        <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter
-                            data={data}
-                            shape={(props) => {
-                            const { cx, cy, payload } = props;
-                            const color = payload.type === 1 ? "blue" : "red";
-                            const size = payload.type === 1 ? 4 : 2;
-                            return <circle cx={cx} cy={cy} r={size} fill={color} />;
-                            }}
-                        />
-                    </ScatterChart>
-                </ResponsiveContainer>
+// Custom tooltip
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
 
-                <ResponsiveContainer  className = "flexContainer" width={containerWidth} height={containerHeight}>
-                    <ScatterChart  margin={{ top: 20, right: 20, bottom: 50, left: 30 }}>
-                        <CartesianGrid />
-                        <XAxis type="number" dataKey="mp_per_game" name="Minutes Per Game" domain={[28.5,35]} stroke="#000000" strokeWidth={2}
-                        label={{ value: "Minutes Per Game", position: "insideBottom", offset: -5, fill: "#000000", }}
-                        />
-                        <YAxis type="number" dataKey="fg_per_game" name="FGM Per Game" domain={[2,15]} stroke="#000000" strokeWidth={2}
-                        label={{ value: "FGM", position: "outsideLeft", offset: -25, angle: -90, dx: -20, fill: "#000000", }}
-                        />
-                        <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter
-                            data={data}
-                            shape={(props) => {
-                            const { cx, cy, payload } = props;
-                            const color = payload.type === 1 ? "blue" : "red";
-                            const size = payload.type === 1 ? 4 : 2;
-                            return <circle cx={cx} cy={cy} r={size} fill={color} />;
-                            }}
-                        />
-                    </ScatterChart>
-                </ResponsiveContainer>
-                
-
-                
-
-               
-            </div>
-            
+  return (
+    <div style={{
+      background: 'var(--surface-2)',
+      border: '1px solid var(--border-2)',
+      borderRadius: 'var(--radius)',
+      padding: '8px 12px',
+      fontFamily: 'var(--font-mono)',
+      fontSize: 11,
+      color: 'var(--text-1)',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+    }}>
+      <div style={{ color: d.type === 1 ? ALL_NBA_COLOR : REGULAR_COLOR, fontWeight: 600, marginBottom: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        {d.type === 1 ? 'All-NBA' : 'Standard'}
+      </div>
+      {Object.entries(d).filter(([k]) => k !== 'type').map(([k, v]) => (
+        <div key={k} style={{ color: 'var(--text-2)' }}>
+          {k}: <span style={{ color: 'var(--text-1)' }}>{typeof v === 'number' ? v.toFixed(1) : v}</span>
+        </div>
+      ))}
     </div>
+  )
+}
 
-    )
+function ChartCard({ config, data }) {
+  return (
+    <div
+      className="chart-card"
+      style={{ animationDelay: `${config.delay}s`, minHeight: 280 }}
+    >
+      {/* Header */}
+      <div className="chart-title">{config.title}</div>
+      <div className="chart-subtitle">
+        {config.subtitle}
+        <span className="chart-legend">
+          <span className="chart-legend-dot" style={{ background: ALL_NBA_COLOR }} />
+          All-NBA
+        </span>
+        <span className="chart-legend">
+          <span className="chart-legend-dot" style={{ background: REGULAR_COLOR }} />
+          Standard
+        </span>
+      </div>
+
+      {/* Chart */}
+      <ResponsiveContainer width="100%" height={220}>
+        <ScatterChart margin={{ top: 8, right: 8, bottom: 32, left: 24 }}>
+          <CartesianGrid stroke={GRID_COLOR} strokeDasharray="0" />
+          <XAxis
+            type="number"
+            dataKey={config.xKey}
+            name={config.xLabel}
+            domain={config.xDomain}
+            stroke={AXIS_COLOR}
+            tick={{ fill: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em' }}
+            tickLine={false}
+            axisLine={{ stroke: AXIS_COLOR }}
+            label={{ value: config.xLabel, position: 'insideBottom', offset: -16, fill: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em' }}
+          />
+          <YAxis
+            type="number"
+            dataKey={config.yKey}
+            name={config.yLabel}
+            domain={config.yDomain}
+            stroke={AXIS_COLOR}
+            tick={{ fill: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em' }}
+            tickLine={false}
+            axisLine={{ stroke: AXIS_COLOR }}
+            label={{ value: config.yLabel, angle: -90, position: 'insideLeft', offset: -4, dx: -6, fill: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em' }}
+            width={52}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeDasharray: '4 3' }} />
+          <Scatter data={data} shape={<CustomDot />} />
+        </ScatterChart>
+      </ResponsiveContainer>
+
+      {/* Data count badge */}
+      <div style={{ position: 'absolute', top: 16, right: 16 }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          letterSpacing: '0.1em',
+          color: 'var(--text-3)',
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 3,
+          padding: '3px 7px',
+        }}>
+          {data.length} pts
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="charts-grid">
+      {[0, 1, 2, 3].map(i => (
+        <div className="chart-card" key={i} style={{ minHeight: 280, animationDelay: `${i * 0.08}s` }}>
+          <div className="skeleton" style={{ height: 16, width: '45%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 10, width: '65%', marginBottom: 24 }} />
+          <div className="skeleton" style={{ height: 200 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function DataViz() {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Summary stats
+  const allNBA   = data.filter(d => d.type === 1)
+  const standard = data.filter(d => d.type !== 1)
+  const avgPPG_allnba   = allNBA.length   ? (allNBA.reduce((s, d) => s + (d.pts_per_game || 0), 0) / allNBA.length).toFixed(1) : '—'
+  const avgPPG_standard = standard.length ? (standard.reduce((s, d) => s + (d.pts_per_game || 0), 0) / standard.length).toFixed(1) : '—'
+
+  useEffect(() => {
+    fetch(dataLink)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false) })
+      .catch(() => { setError('Failed to load data. API cold start may take 1–2 min.'); setLoading(false) })
+  }, [])
+
+  return (
+    <div className="charts-page">
+      {/* HERO */}
+      <div className="hero" style={{ padding: '40px 0 36px', borderBottom: '1px solid var(--border)', marginBottom: 32, animation: 'slide-up 0.5s cubic-bezier(0.22,1,0.36,1) both' }}>
+        <div>
+          <div className="hero-eyebrow">Scatter Analysis</div>
+          <h1 className="hero-title" style={{ fontSize: 'clamp(32px, 4vw, 56px)' }}>
+            Player <em>Data</em> Viz
+          </h1>
+          <p className="hero-sub">
+            1,000 players plotted across 4 statistical dimensions. Orange = All-NBA selection. Blue = standard.
+          </p>
+        </div>
+        {!loading && data.length > 0 && (
+          <div className="hero-stats">
+            {[
+              { value: data.length, label: 'Players' },
+              { value: allNBA.length, label: 'All-NBA' },
+              { value: avgPPG_allnba, label: 'Avg PPG (All-NBA)' },
+            ].map(s => (
+              <div className="hero-stat" key={s.label}>
+                <div className="hero-stat-value">{s.value}</div>
+                <div className="hero-stat-label">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* CONTENT */}
+      {loading && (
+        <>
+          <div className="loading-container" style={{ minHeight: 120, marginBottom: 24 }}>
+            <div style={{ position: 'relative', width: 48, height: 48 }}>
+              <div style={{
+                position: 'absolute', inset: 0,
+                border: '2px solid var(--border-2)',
+                borderTopColor: 'var(--orange)',
+                borderRadius: '50%',
+                animation: 'spin-slow 0.8s linear infinite',
+              }} />
+            </div>
+            <div className="loading-title">Fetching 1,000 records...</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.1em' }}>
+              COLD START MAY TAKE 1–2 MIN
+            </div>
+          </div>
+          <LoadingSkeleton />
+        </>
+      )}
+
+      {error && (
+        <div style={{ padding: '24px', background: 'rgba(232,64,90,0.08)', border: '1px solid rgba(232,64,90,0.25)', borderRadius: 'var(--radius-lg)', color: 'var(--red)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+          ⚠ {error}
+        </div>
+      )}
+
+      {!loading && data.length > 0 && (
+        <div className="charts-grid">
+          {CHART_CONFIGS.map(cfg => (
+            <ChartCard key={cfg.id} config={cfg} data={data} />
+          ))}
+        </div>
+      )}
+
+      {/* LEGEND FOOTER */}
+      {!loading && data.length > 0 && (
+        <div style={{
+          marginTop: 28,
+          display: 'flex',
+          gap: 32,
+          alignItems: 'center',
+          padding: '16px 0',
+          borderTop: '1px solid var(--border)',
+        }}>
+          {[
+            { color: ALL_NBA_COLOR, label: 'All-NBA Selection', count: allNBA.length },
+            { color: REGULAR_COLOR, label: 'Standard Player',   count: standard.length },
+          ].map(item => (
+            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }} />
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-2)', textTransform: 'uppercase' }}>
+                {item.label}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)' }}>({item.count})</span>
+            </div>
+          ))}
+          <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.1em' }}>
+            X-AXIS: MPG · SHARED ACROSS ALL CHARTS
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
