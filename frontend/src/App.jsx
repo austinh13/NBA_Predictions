@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import Predictor from './pages/Predictor'
-import DataViz from './pages/DataViz'
+import Predictor from './pages/AllNbaPredictor'
+import DataViz from './pages/VisualData'
 import './styles/global.css'
 
 const TICKER_ITEMS = [
