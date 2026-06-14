@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 
-// const dataLink = 'http://127.0.0.1:5000/predict_user_input'
-const dataLink = 'https://nba-predictions-uyk0.onrender.com/predict_user_input'
-
 const FIELDS = [
   { key: 'pts_per_game', label: 'Points',   tag: 'PPG',  placeholder: '27.2', min: 0, max: 45 },
   { key: 'trb_per_game', label: 'Rebounds', tag: 'RPG',  placeholder: '10.1', min: 0, max: 25 },
@@ -66,10 +63,83 @@ function RadialRing({ pct, positive }) {
   )
 }
 
-function ResultPanel({ prediction, form }) {
+function LoadingPanel({ elapsed, coldStart }) {
+  // Escalating messages based on elapsed time
+  let message = 'Running model...'
+  let detail = 'Crunching the numbers'
+
+  if (elapsed >= 45) {
+    message = 'Still warming up...'
+    detail = 'Loading the model into memory — hang tight, this is the last stretch'
+  } else if (elapsed >= 20) {
+    message = 'Almost there...'
+    detail = 'Server is finishing startup — first prediction takes longest'
+  } else if (elapsed >= 5) {
+    message = 'Waking up server...'
+    detail = 'Free-tier API was asleep — spinning up now'
+  } else if (coldStart) {
+    message = 'Connecting...'
+    detail = 'Reaching the model server'
+  }
+
+  return (
+    <div className="result-card" style={{ textAlign: 'center', padding: '20px 8px' }}>
+      <div className="section-label">Analysis Output</div>
+
+      {/* Spinning basketball */}
+      <div style={{ position: 'relative', width: 100, height: 100, margin: '12px auto 20px' }}>
+        <div style={{
+          position: 'absolute', inset: -6,
+          borderRadius: '50%',
+          border: '2px solid var(--surface-2)',
+          borderTopColor: 'var(--orange)',
+          animation: 'spin-slow 1.1s linear infinite',
+        }} />
+        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" style={{ animation: 'spin-slow 6s linear infinite' }}>
+          <circle cx="50" cy="50" r="44" stroke="#F4813F" strokeWidth="2" opacity="0.5"/>
+          <path d="M50 6V94" stroke="#F4813F" strokeWidth="1.5" opacity="0.5"/>
+          <path d="M6 50H94" stroke="#F4813F" strokeWidth="1.5" opacity="0.5"/>
+          <path d="M14 24C22 28 28 38 28 50C28 62 22 72 14 76" stroke="#F4813F" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+          <path d="M86 24C78 28 72 38 72 50C72 62 78 72 86 76" stroke="#F4813F" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+        </svg>
+      </div>
+
+      <div className="result-verdict" style={{ color: 'var(--text-1)', fontSize: 22, animation: 'data-flicker 1.4s ease-in-out infinite' }}>
+        {message}
+      </div>
+
+      <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 8, marginBottom: 20, lineHeight: 1.6 }}>
+        {detail}
+      </p>
+
+      {/* Elapsed time bar */}
+      <div className="result-bar-track" style={{ marginBottom: 10 }}>
+        <div
+          className="result-bar-fill"
+          style={{
+            width: `${Math.min((elapsed / 90) * 100, 96)}%`,
+            background: 'linear-gradient(90deg, var(--orange), var(--gold))',
+            animation: 'none',
+            transition: 'width 1s linear',
+          }}
+        />
+      </div>
+
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'var(--text-3)', textTransform: 'uppercase' }}>
+        {elapsed}s elapsed {elapsed >= 5 ? '· cold start in progress' : ''}
+      </div>
+    </div>
+  )
+}
+
+function ResultPanel({ prediction, form, loading, elapsed, coldStart }) {
   const pct = prediction !== null ? Math.round(prediction * 100) : null
   const positive = pct > 50
   const displayPct = useCountUp(pct)
+
+  if (loading) {
+    return <LoadingPanel elapsed={elapsed} coldStart={coldStart} />
+  }
 
   if (prediction === null) {
     return (
@@ -138,6 +208,8 @@ export default function Predictor() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [submitted, setSubmitted] = useState(false)
+  const [coldStart, setColdStart] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
 
   const handleChange = (key, val) => {
     setForm(prev => ({ ...prev, [key]: val }))
@@ -151,9 +223,19 @@ export default function Predictor() {
     setLoading(true)
     setError(null)
     setSubmitted(true)
+    setColdStart(false)
+    setElapsed(0)
+
+    // Track elapsed time; flag as cold-start after 3s of no response
+    const startTime = Date.now()
+    const timer = setInterval(() => {
+      const secs = Math.floor((Date.now() - startTime) / 1000)
+      setElapsed(secs)
+      if (secs >= 3) setColdStart(true)
+    }, 1000)
 
     try {
-      const res = await fetch(dataLink, {
+      const res = await fetch('https://nba-predictions-uyk0.onrender.com/predict_user_input', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ features }),
@@ -163,7 +245,9 @@ export default function Predictor() {
     } catch (err) {
       setError('API unreachable. Cold start may take 1–2 min.')
     } finally {
+      clearInterval(timer)
       setLoading(false)
+      setColdStart(false)
     }
   }
 
@@ -247,7 +331,7 @@ export default function Predictor() {
 
         {/* RESULT */}
         <div className="predictor-result-panel">
-          <ResultPanel prediction={prediction} form={form} />
+          <ResultPanel prediction={prediction} form={form} loading={loading} elapsed={elapsed} coldStart={coldStart} />
         </div>
       </div>
 

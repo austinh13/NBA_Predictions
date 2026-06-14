@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
-import AllNbaPredictor from './pages/AllNbaPredictor'
-import VisualData from './pages/VisualData'
+import Predictor from './pages/Predictor'
+import DataViz from './pages/DataViz'
 import './styles/global.css'
-
 
 const TICKER_ITEMS = [
   { label: 'Model Accuracy', value: '98%' },
   { label: 'Training Records', value: '1,000+' },
   { label: 'Era Coverage', value: '1976–Now' },
+  { label: 'Features Used', value: '6' },
+  { label: 'All-NBA Teams', value: '3 / Year' },
+  { label: 'Data Source', value: 'Basketball-Ref' },
   { label: 'Min Games Filter', value: '5 GP' },
   { label: 'Model Type', value: 'Logistic Reg.' },
 ]
@@ -42,9 +44,15 @@ function BasketballIcon() {
 }
 
 export default function App() {
-  const [page, setPage] = useState('AllNbaPredictor')
+  const [page, setPage] = useState('data')
   const [animating, setAnimating] = useState(false)
   const pageRef = useRef(null)
+
+  // Fire a background warm-up ping to wake the Render server early,
+  // so by the time the user navigates to Predictor it's likely awake.
+  useEffect(() => {
+    fetch('https://nba-predictions-uyk0.onrender.com/nba_predictions').catch(() => {})
+  }, [])
 
   const navigate = (target) => {
     if (target === page) return
@@ -65,15 +73,15 @@ export default function App() {
           <div className="nav-brand-dot" />
         </div>
         <button
-          className={`nav-tab ${page === 'AllNbaPredictor' ? 'active' : ''}`}
-          onClick={() => navigate('AllNbaPredictor')}
+          className={`nav-tab ${page === 'predictor' ? 'active' : ''}`}
+          onClick={() => navigate('predictor')}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <rect x="1" y="5" width="3" height="8" rx="1" fill="currentColor" opacity="0.5"/>
             <rect x="5.5" y="2" width="3" height="11" rx="1" fill="currentColor" opacity="0.75"/>
             <rect x="10" y="0" width="3" height="13" rx="1" fill="currentColor"/>
           </svg>
-          AllNbaPredictor
+          Predictor
         </button>
         <button
           className={`nav-tab ${page === 'data' ? 'active' : ''}`}
@@ -103,7 +111,7 @@ export default function App() {
           transition: 'opacity 0.18s ease, transform 0.18s ease',
         }}
       >
-        {page === 'AllNbaPredictor' ? <AllNbaPredictor /> : <VisualData />}
+        {page === 'predictor' ? <Predictor /> : <DataViz />}
       </div>
     </>
   )
