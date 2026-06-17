@@ -23,27 +23,67 @@ filtered_pf = pd.read_pickle("filtered_df.pkl")
 TURSO_URL = os.environ["TURSO_DATABASE_URL"]        # e.g. libsql://your-db-name.turso.io
 TURSO_AUTH_TOKEN = os.environ["TURSO_AUTH_TOKEN"]
 
-def get_db():
-    # Opens a connection to the remote Turso database.
-    # libsql.connect() mirrors Python's built-in sqlite3 API.
+# Open ONE persistent connection at module load time and reuse it for
+# the lifetime of the process. Opening a fresh connection per request
+# causes the underlying Rust/tokio runtime inside libsql to be torn
+# down and recreated repeatedly, which crashes under Gunicorn with:
+#   "failed to join thread: Resource deadlock avoided"
+# Reusing a single connection avoids that entirely.
+#
+# _db_conn is held in a mutable holder (list) so reconnect_db() can
+# swap it out in place without needing a `global` rebind in every
+# calling function.
+_db_conn_holder = []
+
+def _create_connection():
     return libsql.connect(
         database=TURSO_URL,
         auth_token=TURSO_AUTH_TOKEN,
     )
 
+def reconnect_db():
+    """Replace the live connection with a fresh one. Called when a
+    cache operation fails, in case the old connection went stale
+    (network blip, idle timeout on Turso's side, etc)."""
+    print("🔄 Reconnecting to Turso...")
+    new_conn = _create_connection()
+    if _db_conn_holder:
+        _db_conn_holder[0] = new_conn
+    else:
+        _db_conn_holder.append(new_conn)
+    return new_conn
+
+def get_conn():
+    if not _db_conn_holder:
+        reconnect_db()
+    return _db_conn_holder[0]
+
+def run_with_retry(fn):
+    """Run a function that takes a connection and returns a result.
+    On failure, reconnect once and retry. If the retry also fails,
+    the exception propagates and the caller treats it as a cache miss
+    (the route still falls back to running the model)."""
+    conn = get_conn()
+    try:
+        return fn(conn)
+    except Exception as e:
+        print(f"⚠️ DB operation failed ({e}), retrying with fresh connection...")
+        conn = reconnect_db()
+        return fn(conn)
+
 def init_db():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS prediction_cache (
-            feature_hash TEXT PRIMARY KEY,
-            features TEXT NOT NULL,
-            prediction REAL NOT NULL,
-            hit_count INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    def _init(conn):
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS prediction_cache (
+                feature_hash TEXT PRIMARY KEY,
+                features TEXT NOT NULL,
+                prediction REAL NOT NULL,
+                hit_count INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+    run_with_retry(_init)
 
 init_db()
 
@@ -54,36 +94,48 @@ def hash_features(features):
 
 def get_cached_prediction(features):
     feature_hash = hash_features(features)
-    conn = get_db()
-    cursor = conn.execute(
-        "SELECT prediction FROM prediction_cache WHERE feature_hash = ?",
-        (feature_hash,)
-    )
-    row = cursor.fetchone()
 
-    if row:
-        conn.execute(
-            "UPDATE prediction_cache SET hit_count = hit_count + 1 WHERE feature_hash = ?",
+    def _get(conn):
+        cursor = conn.execute(
+            "SELECT prediction FROM prediction_cache WHERE feature_hash = ?",
             (feature_hash,)
         )
-        conn.commit()
-        conn.close()
-        return row[0]
+        row = cursor.fetchone()
+        if row:
+            conn.execute(
+                "UPDATE prediction_cache SET hit_count = hit_count + 1 WHERE feature_hash = ?",
+                (feature_hash,)
+            )
+            conn.commit()
+            return row[0]
+        return None
 
-    conn.close()
-    return None
+    try:
+        return run_with_retry(_get)
+    except Exception as e:
+        # If the cache is unreachable even after a reconnect attempt,
+        # treat it as a miss rather than failing the whole prediction.
+        print(f"⚠️ Cache lookup failed after retry, falling back to model: {e}")
+        return None
 
 def store_prediction(features, prediction):
     feature_hash = hash_features(features)
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO prediction_cache (feature_hash, features, prediction)
-           VALUES (?, ?, ?)
-           ON CONFLICT(feature_hash) DO NOTHING""",
-        (feature_hash, json.dumps(features), prediction)
-    )
-    conn.commit()
-    conn.close()
+
+    def _store(conn):
+        conn.execute(
+            """INSERT INTO prediction_cache (feature_hash, features, prediction)
+               VALUES (?, ?, ?)
+               ON CONFLICT(feature_hash) DO NOTHING""",
+            (feature_hash, json.dumps(features), prediction)
+        )
+        conn.commit()
+
+    try:
+        run_with_retry(_store)
+    except Exception as e:
+        # Failing to cache shouldn't fail the request — the user still
+        # gets their prediction, it just won't be cached this time.
+        print(f"⚠️ Cache write failed after retry, continuing without caching: {e}")
 
 # ──────────────────────────────────────────────
 # Model
@@ -114,14 +166,10 @@ app = Flask(__name__)
 CORS(app)
 
 
-#sampled = non_zero.sample(n=1000, random_state=42)  # random_state for reproducibility
-
 @app.route("/nba_predictions")
 def get_nba_data():
-    
-    sampled = filtered_pf.sample(n=1000, random_state=42)  # random_state for reproducibility
+    sampled = filtered_pf.sample(n=1000, random_state=42)
     data = sampled[["mp_per_game","pts_per_game","ast_per_game","trb_per_game","type","fg_per_game"]].to_dict(orient="records")
-
     return jsonify(data)
 
 
@@ -159,12 +207,17 @@ def predict_input():
 @app.route("/cache_stats")
 def cache_stats():
     """Inspect how much the cache is being used."""
-    conn = get_db()
-    cursor = conn.execute(
-        "SELECT COUNT(*) as total_entries, SUM(hit_count) as total_hits FROM prediction_cache"
-    )
-    row = cursor.fetchone()
-    conn.close()
+    def _stats(conn):
+        cursor = conn.execute(
+            "SELECT COUNT(*) as total_entries, SUM(hit_count) as total_hits FROM prediction_cache"
+        )
+        return cursor.fetchone()
+
+    try:
+        row = run_with_retry(_stats)
+    except Exception as e:
+        return jsonify({"error": f"cache unreachable: {e}"}), 503
+
     return jsonify({
         "unique_predictions_cached": row[0] or 0,
         "total_requests_served_from_cache": (row[1] or 0) - (row[0] or 0)
