@@ -7,8 +7,7 @@ import pandas as pd
 import hashlib
 import json
 import os
-import libsql
-import concurrent.futures
+import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -17,80 +16,107 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 filtered_pf = pd.read_pickle("filtered_df.pkl")
 
 # ──────────────────────────────────────────────
-# Turso (libSQL) cache setup — persists across
-# Render restarts/redeploys/spin-downs since the
-# database lives on Turso's servers, not on disk.
+# Turso cache, via plain HTTP (no libsql bindings)
 # ──────────────────────────────────────────────
-TURSO_URL = os.environ["TURSO_DATABASE_URL"]        # e.g. libsql://your-db-name.turso.io
+# The libsql Python package wraps a Rust/tokio runtime that doesn't
+# play well with Gunicorn's process model — it can hang indefinitely
+# on the first connection with no exception raised, which defeats any
+# timeout wrapped around it in Python.
+#
+# Turso also exposes a plain HTTP API (the same one their other SDKs
+# use under the hood for "Hrana over HTTP"). Using `requests` instead
+# gives us a real, enforceable network timeout — if Turso is slow or
+# unreachable, we get an exception back in a few seconds, not a
+# silent hang.
+#
+# Docs: https://docs.turso.tech/sdk/http/quickstart
+TURSO_DATABASE_URL = os.environ["TURSO_DATABASE_URL"]  # e.g. libsql://your-db.turso.io
 TURSO_AUTH_TOKEN = os.environ["TURSO_AUTH_TOKEN"]
 
-# Open ONE persistent connection at module load time and reuse it for
-# the lifetime of the process. Opening a fresh connection per request
-# causes the underlying Rust/tokio runtime inside libsql to be torn
-# down and recreated repeatedly, which crashes under Gunicorn with:
-#   "failed to join thread: Resource deadlock avoided"
-# Reusing a single connection avoids that entirely.
-#
-# _db_conn is held in a mutable holder (list) so reconnect_db() can
-# swap it out in place without needing a `global` rebind in every
-# calling function.
-_db_conn_holder = []
+# The HTTP API uses https://, not libsql://
+TURSO_HTTP_URL = TURSO_DATABASE_URL.replace("libsql://", "https://").rstrip("/") + "/v2/pipeline"
 
-def _create_connection():
-    return libsql.connect(
-        database=TURSO_URL,
-        auth_token=TURSO_AUTH_TOKEN,
+TURSO_HEADERS = {
+    "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+    "Content-Type": "application/json",
+}
+
+# Hard network timeout (seconds) for every Turso HTTP call. This is a
+# REAL timeout enforced by `requests`/urllib3 at the socket level —
+# unlike the libsql bindings, this one actually works.
+TURSO_TIMEOUT = 4
+
+
+def turso_execute(sql, params=None):
+    """Run a single SQL statement against Turso over HTTP and return
+    the rows as a list of plain Python values (already unwrapped from
+    Turso's {"type": ..., "value": ...} column format).
+
+    Raises requests.RequestException (including Timeout) on any
+    network problem, or ValueError if Turso reports a SQL error —
+    callers are expected to catch these and treat it as a cache miss.
+    """
+    stmt = {"sql": sql}
+    if params is not None:
+        # Turso's HTTP API wants each bound parameter as either a
+        # bare JSON value (string/number/null) for positional args.
+        stmt["args"] = [_to_turso_value(p) for p in params]
+
+    payload = {
+        "requests": [
+            {"type": "execute", "stmt": stmt},
+            {"type": "close"},
+        ]
+    }
+
+    resp = requests.post(
+        TURSO_HTTP_URL,
+        headers=TURSO_HEADERS,
+        json=payload,
+        timeout=TURSO_TIMEOUT,
     )
+    resp.raise_for_status()
+    data = resp.json()
 
-def reconnect_db():
-    """Replace the live connection with a fresh one. Called when a
-    cache operation fails, in case the old connection went stale
-    (network blip, idle timeout on Turso's side, etc)."""
-    print("🔄 Reconnecting to Turso...")
-    new_conn = _create_connection()
-    if _db_conn_holder:
-        _db_conn_holder[0] = new_conn
-    else:
-        _db_conn_holder.append(new_conn)
-    return new_conn
+    # data["results"][0] corresponds to the "execute" request above.
+    result_entry = data["results"][0]
+    if result_entry.get("type") == "error":
+        raise ValueError(result_entry.get("error", {}).get("message", "Unknown Turso error"))
 
-def get_conn():
-    if not _db_conn_holder:
-        reconnect_db()
-    return _db_conn_holder[0]
+    result = result_entry["response"]["result"]
+    rows = result.get("rows", [])
 
-# libsql's sync client can hang indefinitely on a network blip (no
-# built-in per-call timeout). To stop a stuck DB call from holding
-# the whole Flask worker hostage for the full Gunicorn --timeout
-# window, every cache operation runs in a worker thread with a hard
-# wall-clock cap. If it doesn't finish in time, we give up on the
-# cache and let the route fall back to the model.
-_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-CACHE_TIMEOUT_SECONDS = 4
+    # Each row is a list of {"type": "text"/"integer"/"float"/"null", "value": ...}
+    return [[_from_turso_value(cell) for cell in row] for row in rows]
 
-def run_with_retry(fn):
-    """Run a function that takes a connection and returns a result.
-    Enforces a hard timeout so a hung connection can't block the
-    request. On failure (error or timeout), reconnect once and retry
-    with the same timeout. If the retry also fails, the exception
-    propagates and the caller treats it as a cache miss."""
 
-    def _attempt():
-        conn = get_conn()
-        return fn(conn)
+def _to_turso_value(value):
+    if value is None:
+        return {"type": "null"}
+    if isinstance(value, bool):
+        return {"type": "integer", "value": str(int(value))}
+    if isinstance(value, int):
+        return {"type": "integer", "value": str(value)}
+    if isinstance(value, float):
+        return {"type": "float", "value": value}
+    return {"type": "text", "value": str(value)}
 
-    future = _executor.submit(_attempt)
-    try:
-        return future.result(timeout=CACHE_TIMEOUT_SECONDS)
-    except Exception as e:
-        print(f"⚠️ DB operation failed/timed out ({e}), retrying with fresh connection...")
-        reconnect_db()
-        future2 = _executor.submit(_attempt)
-        return future2.result(timeout=CACHE_TIMEOUT_SECONDS)
+
+def _from_turso_value(cell):
+    cell_type = cell.get("type")
+    value = cell.get("value")
+    if cell_type == "null":
+        return None
+    if cell_type == "integer":
+        return int(value)
+    if cell_type == "float":
+        return float(value)
+    return value
+
 
 def init_db():
-    def _init(conn):
-        conn.execute("""
+    try:
+        turso_execute("""
             CREATE TABLE IF NOT EXISTS prediction_cache (
                 feature_hash TEXT PRIMARY KEY,
                 features TEXT NOT NULL,
@@ -99,78 +125,74 @@ def init_db():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        conn.commit()
-    try:
-        run_with_retry(_init)
+        print("✅ Cache table ready")
     except Exception as e:
-        # Don't let a slow/unreachable Turso DB block the app from
-        # starting up at all. The table will just get created lazily
-        # on the first successful cache call instead.
-        print(f"⚠️ Could not initialize cache table at startup ({e}). Will retry on first request.")
+        # Don't block app startup if Turso is briefly unreachable —
+        # the table gets created lazily on first successful write.
+        print(f"⚠️ Could not initialize cache table at startup ({e}). Will retry later.")
 
 init_db()
+
 
 def hash_features(features):
     """Deterministic hash for an exact feature vector match."""
     normalized = json.dumps([round(f, 4) for f in features])
     return hashlib.sha256(normalized.encode()).hexdigest()
 
+
 def get_cached_prediction(features):
     feature_hash = hash_features(features)
-
-    def _get(conn):
-        cursor = conn.execute(
-            "SELECT prediction FROM prediction_cache WHERE feature_hash = ?",
-            (feature_hash,)
-        )
-        row = cursor.fetchone()
-        if row:
-            conn.execute(
-                "UPDATE prediction_cache SET hit_count = hit_count + 1 WHERE feature_hash = ?",
-                (feature_hash,)
-            )
-            conn.commit()
-            return row[0]
-        return None
-
     try:
-        return run_with_retry(_get)
-    except Exception as e:
-        # If the cache is unreachable even after a reconnect attempt,
-        # treat it as a miss rather than failing the whole prediction.
-        print(f"⚠️ Cache lookup failed after retry, falling back to model: {e}")
+        rows = turso_execute(
+            "SELECT prediction FROM prediction_cache WHERE feature_hash = ?",
+            [feature_hash],
+        )
+        if rows:
+            # Fire-and-forget hit count bump — don't let this slow
+            # down or risk the actual cache read above.
+            try:
+                turso_execute(
+                    "UPDATE prediction_cache SET hit_count = hit_count + 1 WHERE feature_hash = ?",
+                    [feature_hash],
+                )
+            except Exception:
+                pass  # hit_count is just a stat, not worth retrying/blocking on
+            return rows[0][0]
         return None
+    except Exception as e:
+        # Cache unreachable/slow/erroring -> treat as a miss, let the
+        # model run. Caching is an optimization, never a hard dependency.
+        print(f"⚠️ Cache lookup failed, falling back to model: {e}")
+        return None
+
 
 def store_prediction(features, prediction):
     feature_hash = hash_features(features)
-
-    def _store(conn):
-        conn.execute(
+    try:
+        turso_execute(
             """INSERT INTO prediction_cache (feature_hash, features, prediction)
                VALUES (?, ?, ?)
                ON CONFLICT(feature_hash) DO NOTHING""",
-            (feature_hash, json.dumps(features), prediction)
+            [feature_hash, json.dumps(features), prediction],
         )
-        conn.commit()
-
-    try:
-        run_with_retry(_store)
     except Exception as e:
-        # If the table doesn't exist yet (startup init failed earlier
-        # due to a transient Turso outage), create it now and retry
-        # once more before giving up.
         if "no such table" in str(e).lower():
-            print("⚠️ Cache table missing, creating it now...")
             init_db()
             try:
-                run_with_retry(_store)
+                turso_execute(
+                    """INSERT INTO prediction_cache (feature_hash, features, prediction)
+                       VALUES (?, ?, ?)
+                       ON CONFLICT(feature_hash) DO NOTHING""",
+                    [feature_hash, json.dumps(features), prediction],
+                )
                 return
             except Exception as e2:
                 print(f"⚠️ Cache write failed after table creation retry: {e2}")
                 return
-        # Failing to cache shouldn't fail the request — the user still
-        # gets their prediction, it just won't be cached this time.
-        print(f"⚠️ Cache write failed after retry, continuing without caching: {e}")
+        # Failing to cache shouldn't fail the request — the user
+        # still gets their prediction, it just won't be cached now.
+        print(f"⚠️ Cache write failed, continuing without caching: {e}")
+
 
 # ──────────────────────────────────────────────
 # Model
@@ -242,20 +264,19 @@ def predict_input():
 @app.route("/cache_stats")
 def cache_stats():
     """Inspect how much the cache is being used."""
-    def _stats(conn):
-        cursor = conn.execute(
+    try:
+        rows = turso_execute(
             "SELECT COUNT(*) as total_entries, SUM(hit_count) as total_hits FROM prediction_cache"
         )
-        return cursor.fetchone()
-
-    try:
-        row = run_with_retry(_stats)
+        row = rows[0] if rows else [0, 0]
     except Exception as e:
         return jsonify({"error": f"cache unreachable: {e}"}), 503
 
+    total_entries = row[0] or 0
+    total_hits = row[1] or 0
     return jsonify({
-        "unique_predictions_cached": row[0] or 0,
-        "total_requests_served_from_cache": (row[1] or 0) - (row[0] or 0)
+        "unique_predictions_cached": total_entries,
+        "total_requests_served_from_cache": total_hits - total_entries
     })
 
 
