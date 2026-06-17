@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import libsql
+import concurrent.futures
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -58,18 +59,34 @@ def get_conn():
         reconnect_db()
     return _db_conn_holder[0]
 
+# libsql's sync client can hang indefinitely on a network blip (no
+# built-in per-call timeout). To stop a stuck DB call from holding
+# the whole Flask worker hostage for the full Gunicorn --timeout
+# window, every cache operation runs in a worker thread with a hard
+# wall-clock cap. If it doesn't finish in time, we give up on the
+# cache and let the route fall back to the model.
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+CACHE_TIMEOUT_SECONDS = 4
+
 def run_with_retry(fn):
     """Run a function that takes a connection and returns a result.
-    On failure, reconnect once and retry. If the retry also fails,
-    the exception propagates and the caller treats it as a cache miss
-    (the route still falls back to running the model)."""
-    conn = get_conn()
+    Enforces a hard timeout so a hung connection can't block the
+    request. On failure (error or timeout), reconnect once and retry
+    with the same timeout. If the retry also fails, the exception
+    propagates and the caller treats it as a cache miss."""
+
+    def _attempt():
+        conn = get_conn()
+        return fn(conn)
+
+    future = _executor.submit(_attempt)
     try:
-        return fn(conn)
+        return future.result(timeout=CACHE_TIMEOUT_SECONDS)
     except Exception as e:
-        print(f"⚠️ DB operation failed ({e}), retrying with fresh connection...")
-        conn = reconnect_db()
-        return fn(conn)
+        print(f"⚠️ DB operation failed/timed out ({e}), retrying with fresh connection...")
+        reconnect_db()
+        future2 = _executor.submit(_attempt)
+        return future2.result(timeout=CACHE_TIMEOUT_SECONDS)
 
 def init_db():
     def _init(conn):
@@ -83,7 +100,13 @@ def init_db():
             )
         """)
         conn.commit()
-    run_with_retry(_init)
+    try:
+        run_with_retry(_init)
+    except Exception as e:
+        # Don't let a slow/unreachable Turso DB block the app from
+        # starting up at all. The table will just get created lazily
+        # on the first successful cache call instead.
+        print(f"⚠️ Could not initialize cache table at startup ({e}). Will retry on first request.")
 
 init_db()
 
@@ -133,6 +156,18 @@ def store_prediction(features, prediction):
     try:
         run_with_retry(_store)
     except Exception as e:
+        # If the table doesn't exist yet (startup init failed earlier
+        # due to a transient Turso outage), create it now and retry
+        # once more before giving up.
+        if "no such table" in str(e).lower():
+            print("⚠️ Cache table missing, creating it now...")
+            init_db()
+            try:
+                run_with_retry(_store)
+                return
+            except Exception as e2:
+                print(f"⚠️ Cache write failed after table creation retry: {e2}")
+                return
         # Failing to cache shouldn't fail the request — the user still
         # gets their prediction, it just won't be cached this time.
         print(f"⚠️ Cache write failed after retry, continuing without caching: {e}")
